@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+title: "Agrarian Society Simulator"
+message: "If you use this software in research or teaching, please cite it."
+type: software
+authors:
+  - family-names: "wilmerfranzenqaq-dot"
+version: 1.0.0
+date-released: 2026-08-14
+repository-code: "https://github.com/wilmerfranzenqaq-dot/agrarian-society-simulator"
+license: MIT
+
