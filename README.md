@@ -1,7 +1,7 @@
 # 土地、家族与周期：底层农业社会模拟
 
-[![Tests](https://github.com/wilmerfranzenqaq-dot/agrarian-society-simulator/actions/workflows/tests.yml/badge.svg)](https://github.com/wilmerfranzenqaq-dot/agrarian-society-simulator/actions/workflows/tests.yml)
-[![Release](https://img.shields.io/github/v/release/wilmerfranzenqaq-dot/agrarian-society-simulator)](https://github.com/wilmerfranzenqaq-dot/agrarian-society-simulator/releases/latest)
+[![Tests](https://github.com/BrianQaQ/agrarian-society-simulator/actions/workflows/tests.yml/badge.svg)](https://github.com/BrianQaQ/agrarian-society-simulator/actions/workflows/tests.yml)
+[![Release](https://img.shields.io/github/v/release/BrianQaQ/agrarian-society-simulator)](https://github.com/BrianQaQ/agrarian-society-simulator/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 这是一个观察者视角的代理模型。它不模拟皇帝，不提供赈灾、军事、科技等经营按钮，也没有随机灾害或隐藏 Buff。宏观结构只来自少数底层约束：
