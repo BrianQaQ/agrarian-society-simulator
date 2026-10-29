@@ -18,5 +18,5 @@ All notable changes to this project are documented here. The format follows
 - Labeled landholding histogram and CSV history export.
 - Deterministic random seeds and nine regression tests.
 
-[1.0.0]: https://github.com/wilmerfranzenqaq-dot/agrarian-society-simulator/releases/tag/v1.0.0
+[1.0.0]: https://github.com/BrianQaQ/agrarian-society-simulator/releases/tag/v1.0.0
 
