@@ -61,8 +61,8 @@ class ObserverApp(tk.Tk):
         cards = ttk.Frame(self)
         cards.pack(fill="x", padx=18, pady=(0, 8))
         for i, (key, title) in enumerate((("population", "人口"), ("households", "家户"),
-                ("gini", "土地基尼"), ("top", "前10%占地"), ("landless", "土地不足人口"),
-                ("pressure", "起义压力"), ("cycles", "周期次数"))):
+                ("gini", "土地基尼"), ("top", "前10%占地"), ("landless", "无地人口"),
+                ("fiscal", "财政充足率"), ("cycles", "改朝次数"))):
             f = ttk.Frame(cards, style="Panel.TFrame", padding=(12, 8))
             f.grid(row=0, column=i, sticky="nsew", padx=(0, 6))
             cards.columnconfigure(i, weight=1)
@@ -85,7 +85,7 @@ class ObserverApp(tk.Tk):
         ttk.Label(foot, text="演化事件", style="Panel.TLabel", font=("PingFang SC", 10, "bold")).pack(side="left")
         self.event_label = ttk.Label(foot, text="初始化", style="Muted.TLabel", wraplength=1000)
         self.event_label.pack(side="left", padx=(14, 0))
-        ttk.Label(foot, text="无随机灾害 · 无政策Buff · 土地守恒", style="Muted.TLabel").pack(side="right")
+        ttk.Label(foot, text="年景随机 · 无剧本事件 · 土地守恒", style="Muted.TLabel").pack(side="right")
 
     def _controls(self, parent: ttk.Frame) -> None:
         panel = ttk.Frame(parent, style="Panel.TFrame", padding=14)
@@ -107,14 +107,17 @@ class ObserverApp(tk.Tk):
                      values=("均分继承", "长子继承")).pack(side="right")
 
         specs = (
-            ("tax", "产出税率", .00, .35, .12),
-            ("rent", "租佃分成", .05, .65, .32),
-            ("subsistence", "人均生存消耗", .65, 1.45, 1.00),
-            ("uprising", "起义触发阈值", .08, .55, .18),
-            ("redistribution", "起义没收比例", .10, .95, .68),
-            ("fertility", "固定生育倾向", .01, .12, .055),
-            ("reserve", "固定存粮目标/年", .00, 2.50, .80),
-            ("acquisition", "固定购地倾向", .00, 1.00, .55),
+            ("harvest", "年景波动（变异系数）", .00, .50, .20),
+            ("interest", "借贷年利率", .10, 1.00, .40),
+            ("burden", "开国财政需求/产出", .02, .20, .08),
+            ("growth", "财政需求年增长", .000, .020, .007),
+            ("evasion", "大户隐田速度/年", .000, .050, .010),
+            ("revolt", "国家可镇压的动员比例", .05, .50, .20),
+            ("seizure", "战乱夺佃率/年", .00, .50, .15),
+            ("subsistence", "人均生存消耗（石）", 3.0, 6.0, 4.0),
+            ("fertility", "固定生育率", .02, .06, .04),
+            ("reserve", "固定存粮目标/年", .00, 2.50, .50),
+            ("acquisition", "固定放贷倾向", .00, 1.00, .60),
             ("mutation", "演化模式变异率", .00, .25, .06),
         )
         for key, title, lo, hi, default in specs:
@@ -186,7 +189,10 @@ class ObserverApp(tk.Tk):
 
     def _show_value(self, key: str, label: ttk.Label) -> None:
         value = self.values[key].get()
-        label.configure(text=f"{value:.2f}" if key in {"subsistence", "reserve"} else f"{value:.0%}")
+        if key in {"subsistence", "reserve"}:
+            label.configure(text=f"{value:.2f}")
+        else:
+            label.configure(text=f"{value:.1%}" if key in {"growth", "evasion"} else f"{value:.0%}")
 
     def _mode_help(self) -> None:
         text = ("所有家户使用相同策略，用于比较继承制、税率等制度。" if self.mode_var.get() == "fixed"
@@ -194,22 +200,26 @@ class ObserverApp(tk.Tk):
         self.mode_help.configure(text=text)
 
     def _new_simulation(self) -> None:
+        value = lambda key: self.values[key].get()
         institution = Institution(
-            tax_rate=self.values.get("tax", tk.DoubleVar(value=.12)).get(),
-            rent_share=self.values.get("rent", tk.DoubleVar(value=.32)).get(),
-            subsistence=self.values.get("subsistence", tk.DoubleVar(value=1.)).get(),
-            uprising_threshold=self.values.get("uprising", tk.DoubleVar(value=.18)).get(),
-            redistribution_share=self.values.get("redistribution", tk.DoubleVar(value=.68)).get(),
+            harvest_cv=value("harvest"),
+            interest_rate=value("interest"),
+            fiscal_burden=value("burden"),
+            fiscal_growth=value("growth"),
+            evasion_rate=value("evasion"),
+            revolt_threshold=value("revolt"),
+            war_seizure=value("seizure"),
+            subsistence=value("subsistence"),
             inheritance="equal" if self.inheritance_var.get() == "均分继承" else "primogeniture",
         )
         strategy = Strategy(
-            fertility=self.values.get("fertility", tk.DoubleVar(value=.055)).get(),
-            reserve_years=self.values.get("reserve", tk.DoubleVar(value=.8)).get(),
-            acquisition=self.values.get("acquisition", tk.DoubleVar(value=.55)).get(),
+            fertility=value("fertility"),
+            reserve_years=value("reserve"),
+            acquisition=value("acquisition"),
         )
         self.sim = AgrarianSimulation(seed=self.seed, mode=self.mode_var.get(), institution=institution,
                                       fixed_strategy=strategy,
-                                      mutation_rate=self.values.get("mutation", tk.DoubleVar(value=.06)).get())
+                                      mutation_rate=value("mutation"))
 
     def reset(self) -> None:
         self.running = False
@@ -244,16 +254,20 @@ class ObserverApp(tk.Tk):
         if not hasattr(self, "sim"):
             return
         m = self.sim.metrics()
-        self.year_label.configure(text=f"第 {m['year']} 年 · 第 {m['generation']} 代 · {self.sim.mode}")
+        status = "战乱" if m["at_war"] else f"立国第 {m['dynasty_age']} 年"
+        self.year_label.configure(
+            text=f"第 {m['year']} 年 · 第 {m['dynasty']} 朝 · {status} · {self.sim.mode}")
         formats = {
             "population": f"{float(m['population']):,.0f}", "households": f"{m['households']}",
             "gini": f"{float(m['land_gini']):.3f}", "top": f"{float(m['top10_land']):.1%}",
-            "landless": f"{float(m['land_deficient_rate']):.1%}", "pressure": f"{float(m['uprising_pressure']):.1%}",
+            "landless": f"{float(m['landless_rate']):.1%}", "fiscal": f"{float(m['fiscal_ratio']):.0%}",
             "cycles": f"{m['cycles']}",
         }
         for key, value in formats.items(): self.kpis[key].set(value)
-        self.event_label.configure(text="；".join(self.sim.events) if self.sim.events else
-                                   f"土地成交 {float(m['land_transferred']):.2f}，地价 {float(m['land_price']):.2f}")
+        self.event_label.configure(text="；".join(self.sim.events) if self.sim.events else (
+            f"人均耕地 {float(m['land_per_person']):.1f} 亩　劳动收入 {float(m['wage']):.2f} 石/人　"
+            f"地租 {float(m['rent']):.2f} 石/亩　亩税 {float(m['tax_per_mu']):.2f}　"
+            f"地价 {float(m['land_price']):.1f}　抵债失地 {float(m['land_transferred']):.0f} 亩"))
         self._draw_demographic()
         self._draw_land()
         self._draw_conflict()
@@ -262,7 +276,7 @@ class ObserverApp(tk.Tk):
         self._draw_inheritance()
         self.strategy_text.configure(text=(
             f"生育倾向 {float(m['fertility']):.3f}　存粮目标 {float(m['reserve_years']):.2f}年\n"
-            f"购地倾向 {float(m['acquisition']):.1%}　反抗阈值 {float(m['resistance_threshold']):.2f}"
+            f"放贷倾向 {float(m['acquisition']):.1%}　反抗阈值 {float(m['resistance_threshold']):.2f}"
         ))
 
     def _plot(self, canvas: tk.Canvas, series: list[tuple[str, str, str, bool]], shared: bool = False) -> None:
@@ -299,18 +313,19 @@ class ObserverApp(tk.Tk):
     def _draw_land(self) -> None:
         self._plot(self.land_canvas, [("land_gini", RED, "土地基尼", True),
                                       ("top10_land", GOLD, "前10%占地", True),
-                                      ("land_deficient_rate", BLUE, "土地不足", True)])
+                                      ("landless_rate", BLUE, "无地人口", True),
+                                      ("hidden_land", CYAN, "隐田", True)])
 
     def _draw_conflict(self) -> None:
         self._plot(self.conflict_canvas, [("hunger_rate", RED, "饥饿", True),
-                                          ("grievance", BLUE, "累积压力", True),
+                                          ("mobilized", CYAN, "动员人口", True),
                                           ("uprising_pressure", GOLD, "起义压力", True),
-                                          ("mobilized", CYAN, "动员人口", True)])
+                                          ("fiscal_ratio", GREEN, "财政充足", True)])
 
     def _draw_strategy(self) -> None:
         self._plot(self.strategy_canvas, [("fertility", GREEN, "生育", False),
                                            ("reserve_years", BLUE, "存粮", False),
-                                           ("acquisition", GOLD, "购地", True),
+                                           ("acquisition", GOLD, "放贷", True),
                                            ("resistance_threshold", RED, "反抗阈值", True)])
 
     def _draw_hist(self) -> None:
@@ -360,18 +375,28 @@ class ObserverApp(tk.Tk):
 
 
 def cli(args: argparse.Namespace) -> int:
-    inst = Institution(tax_rate=args.tax, inheritance=args.inheritance,
-                       uprising_threshold=args.uprising_threshold)
+    inst = Institution(inheritance=args.inheritance, fiscal_burden=args.fiscal_burden,
+                       fiscal_growth=args.fiscal_growth, interest_rate=args.interest,
+                       revolt_threshold=args.revolt_threshold, war_seizure=args.war_seizure)
     sim = AgrarianSimulation(households=args.households, seed=args.seed, mode=args.mode,
                              institution=inst, mutation_rate=args.mutation)
-    sim.step(args.years)
+    falls = []
+    for _ in range(args.years):
+        sim.step(1)
+        falls += [f"  第 {sim.year} 年　{event}" for event in sim.events]
     m = sim.metrics()
-    print(f"模式: {args.mode}　年份: {m['year']}　代数: {m['generation']}")
-    print(f"人口: {float(m['population']):,.0f}　家户: {m['households']}")
-    print(f"土地基尼: {float(m['land_gini']):.3f}　前10%占地: {float(m['top10_land']):.1%}")
-    print(f"起义压力: {float(m['uprising_pressure']):.1%}　周期: {m['cycles']}")
+    print(f"模式: {args.mode}　年份: {m['year']}　第 {m['dynasty']} 朝　改朝 {m['cycles']} 次")
+    print(f"人口: {float(m['population']):,.0f}　家户: {m['households']}　"
+          f"人均耕地: {float(m['land_per_person']):.1f} 亩")
+    print(f"土地基尼: {float(m['land_gini']):.3f}　前10%占地: {float(m['top10_land']):.1%}　"
+          f"无地人口: {float(m['landless_rate']):.1%}")
+    print(f"财政充足率: {float(m['fiscal_ratio']):.0%}　隐田: {float(m['hidden_land']):.1%}　"
+          f"动员: {float(m['mobilized']):.1%}")
     print(f"策略均值: 生育={float(m['fertility']):.3f}, 存粮={float(m['reserve_years']):.2f}, "
-          f"购地={float(m['acquisition']):.2f}, 均分人口={float(m['equal_inheritance']):.1%}")
+          f"放贷={float(m['acquisition']):.2f}, 均分人口={float(m['equal_inheritance']):.1%}")
+    if falls:
+        print("朝代更替:")
+        print("\n".join(falls))
     if args.csv:
         sim.export_csv(args.csv)
         print(f"已导出: {args.csv}")
@@ -385,8 +410,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=7)
     p.add_argument("--mode", choices=("fixed", "evolution"), default="fixed")
     p.add_argument("--inheritance", choices=("equal", "primogeniture"), default="equal")
-    p.add_argument("--tax", type=float, default=.12)
-    p.add_argument("--uprising-threshold", type=float, default=.18)
+    p.add_argument("--fiscal-burden", type=float, default=.08)
+    p.add_argument("--fiscal-growth", type=float, default=.007)
+    p.add_argument("--interest", type=float, default=.40)
+    p.add_argument("--revolt-threshold", type=float, default=.20)
+    p.add_argument("--war-seizure", type=float, default=.15)
     p.add_argument("--mutation", type=float, default=.06)
     p.add_argument("--csv")
     return p.parse_args()

@@ -9,7 +9,7 @@ description = "A bottom-up agent-based simulation of land, inheritance, survival
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "wilmerfranzenqaq-dot" }]
+authors = [{ name = "BrianQaQ" }]
 keywords = ["agent-based-model", "agrarian-society", "inheritance", "simulation", "python"]
 classifiers = [
   "Development Status :: 4 - Beta",
