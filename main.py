@@ -113,6 +113,7 @@ class ObserverApp(tk.Tk):
             ("growth", "财政需求年增长", .000, .020, .007),
             ("evasion", "大户隐田速度/年", .000, .050, .010),
             ("revolt", "国家可镇压的动员比例", .05, .50, .20),
+            ("seizure", "战乱夺佃率/年", .00, .50, .15),
             ("subsistence", "人均生存消耗（石）", 3.0, 6.0, 4.0),
             ("fertility", "固定生育率", .02, .06, .04),
             ("reserve", "固定存粮目标/年", .00, 2.50, .50),
@@ -207,6 +208,7 @@ class ObserverApp(tk.Tk):
             fiscal_growth=value("growth"),
             evasion_rate=value("evasion"),
             revolt_threshold=value("revolt"),
+            war_seizure=value("seizure"),
             subsistence=value("subsistence"),
             inheritance="equal" if self.inheritance_var.get() == "均分继承" else "primogeniture",
         )
@@ -375,7 +377,7 @@ class ObserverApp(tk.Tk):
 def cli(args: argparse.Namespace) -> int:
     inst = Institution(inheritance=args.inheritance, fiscal_burden=args.fiscal_burden,
                        fiscal_growth=args.fiscal_growth, interest_rate=args.interest,
-                       revolt_threshold=args.revolt_threshold)
+                       revolt_threshold=args.revolt_threshold, war_seizure=args.war_seizure)
     sim = AgrarianSimulation(households=args.households, seed=args.seed, mode=args.mode,
                              institution=inst, mutation_rate=args.mutation)
     falls = []
@@ -412,6 +414,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--fiscal-growth", type=float, default=.007)
     p.add_argument("--interest", type=float, default=.40)
     p.add_argument("--revolt-threshold", type=float, default=.20)
+    p.add_argument("--war-seizure", type=float, default=.15)
     p.add_argument("--mutation", type=float, default=.06)
     p.add_argument("--csv")
     return p.parse_args()

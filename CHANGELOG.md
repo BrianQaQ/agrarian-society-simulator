@@ -14,6 +14,7 @@ All notable changes to this project are documented here. The format follows
 - State with a growing fiscal need, land registers, and tax evasion by large estates.
 - Revolt when mobilized hunger exceeds what the state's funding can suppress.
 - Multi-year wars and new dynasties that resurvey land, void debts and settle ownerless land.
+- Wartime transfer of leased-out land to the tenants who till it (`war_seizure`).
 - Integer household members and a random number of heirs per generation.
 
 ### Changed

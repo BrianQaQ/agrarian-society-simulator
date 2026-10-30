@@ -100,6 +100,27 @@ class BottomUpModelTests(unittest.TestCase):
         self.assertEqual(founding["hidden_land"], 0.0)
         self.assertEqual(founding["debt_ratio"], 0.0)
 
+    def test_war_hands_leased_land_to_tenants(self):
+        sim = AgrarianSimulation(households=3, seed=1)
+        landlord, tenant, owner = sim.households
+        landlord.members, landlord.land = 5, 80.0
+        tenant.members, tenant.land = 5, 0.0
+        owner.members, owner.land = 5, 40.0
+        sim.total_land, sim.state_land = 120.0, 0.0
+        sim._seize_leased_land()   # 8 亩/人: landlord leases out 40, tenant rents 40
+        self.assertAlmostEqual(landlord.land, 80.0 - 40.0 * sim.institution.war_seizure)
+        self.assertAlmostEqual(tenant.land, 40.0 * sim.institution.war_seizure)
+        self.assertAlmostEqual(owner.land, 40.0)
+        self.assertAlmostEqual(sum(h.land for h in sim.households), 120.0)
+
+    def test_new_dynasty_starts_with_more_equal_land(self):
+        sim = AgrarianSimulation(households=600, seed=7)
+        while sim.dynasty == 1 and sim.year < 500:
+            sim.step(1)
+        self.assertEqual(sim.dynasty, 2)
+        fall = next(h for h in reversed(sim.history) if h["at_war"] == 0 and h["dynasty"] == 1)
+        self.assertLess(sim.metrics()["land_gini"], float(fall["land_gini"]) - 0.1)
+
     def test_heirs_receive_whole_members(self):
         sim = AgrarianSimulation(households=1, seed=2, institution=Institution(inheritance="equal"))
         parent = sim.households[0]

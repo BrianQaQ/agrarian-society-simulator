@@ -54,6 +54,7 @@ class Institution:
     evasion_rate: float = 0.01         # speed at which large estates leave the register
     revolt_threshold: float = 0.20     # mobilized share a fully funded state can suppress
     war_mortality: float = 0.03        # violent deaths per year among rebels
+    war_seizure: float = 0.15          # share of leased-out land tenants keep per war year
     generation_years: int = 25
     inheritance: str = "equal"
 
@@ -255,7 +256,9 @@ class AgrarianSimulation:
         self.collected = collected
         self.fiscal_ratio = 0.0 if self.at_war else collected / max(self.fiscal_need, 1e-9)
 
-        if not self.at_war:
+        if self.at_war:
+            self._seize_leased_land()
+        else:
             self._lend()
         self._demography()
         if not self.at_war:
@@ -267,6 +270,30 @@ class AgrarianSimulation:
         self._reconcile_credit()
         self._update_war()
         self._record()
+
+    def _seize_leased_land(self) -> None:
+        """In war landlords flee or are killed and tenants keep the fields they till.
+
+        Each family farms land in proportion to its members. Each war year a
+        share of every estate's leased-out land passes to the families who
+        lease land in, in proportion to the land they rent.
+        """
+        population = sum(h.members for h in self.households)
+        per_person = (self.total_land - self.state_land) / max(population, 1)
+        tenants = [(h, h.members * per_person - h.land) for h in self.households
+                   if h.land < h.members * per_person]
+        leased_in = sum(x for _, x in tenants)
+        if leased_in <= 0:
+            return
+        seized = 0.0
+        for h in self.households:
+            farmed = h.members * per_person
+            if h.land > farmed:
+                lost = (h.land - farmed) * self.institution.war_seizure
+                h.land -= lost
+                seized += lost
+        for h, rented in tenants:
+            h.land += seized * rented / leased_in
 
     def _update_evasion(self) -> None:
         """Large estates drift off the register; a family ten times the mean hides all."""
